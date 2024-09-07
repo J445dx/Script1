@@ -1,64 +1,65 @@
-local aimbotEnabled = false  -- Variável para controlar o estado do aimbot
+-- Criando a Interface
+local ScreenGui = Instance.new("ScreenGui")
+local ToggleButton = Instance.new("TextButton")
 
--- Função para criar a interface
-local function createInterface()
-    local ScreenGui = Instance.new("ScreenGui")
-    local ToggleButton = Instance.new("TextButton")
-    
-    -- Configurando o ScreenGui
-    ScreenGui.Parent = game.CoreGui
+ScreenGui.Parent = game.CoreGui
 
-    -- Configurando o ToggleButton
-    ToggleButton.Size = UDim2.new(0, 100, 0, 50)
-    ToggleButton.Position = UDim2.new(0, 100, 0, 100)
-    ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    ToggleButton.Text = "Ligar Aimbot"
-    ToggleButton.Parent = ScreenGui
-    
-    -- Evento de clique no botão
-    ToggleButton.MouseButton1Click:Connect(function()
-        aimbotEnabled = not aimbotEnabled
-        if aimbotEnabled then
-            ToggleButton.Text = "Desligar Aimbot"
-            ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-        else
-            ToggleButton.Text = "Ligar Aimbot"
-            ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-        end
-    end)
-end
+ToggleButton.Parent = ScreenGui
+ToggleButton.Text = "Ligar Aimbot"
+ToggleButton.Size = UDim2.new(0, 200, 0, 50)
+ToggleButton.Position = UDim2.new(0.5, -100, 0, 0)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+ToggleButton.TextScaled = true
 
--- Função do aimbot
-local function aimbot()
-    local players = game:GetService("Players")
-    local localPlayer = players.LocalPlayer
-    local mouse = localPlayer:GetMouse()
+local aimbotActive = false
 
-    while true do
-        wait(0.1)  -- Espera para não sobrecarregar
+-- Função que ativa e desativa o Aimbot
+ToggleButton.MouseButton1Click:Connect(function()
+    aimbotActive = not aimbotActive
+    if aimbotActive then
+        ToggleButton.Text = "Desligar Aimbot"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    else
+        ToggleButton.Text = "Ligar Aimbot"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    end
+end)
 
-        if aimbotEnabled then
-            local closestPlayer
-            local shortestDistance = math.huge
+-- Função para encontrar o jogador mais próximo
+local function getClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    local localPlayer = game.Players.LocalPlayer
+    local localCharacter = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+    local localPosition = localCharacter.HumanoidRootPart.Position
 
-            for _, player in pairs(players:GetPlayers()) do
-                if player ~= localPlayer and player.Character and player.Character:FindFirstChild("Head") then
-                    local distance = (player.Character.Head.Position - localPlayer.Character.Head.Position).magnitude
-                    if distance < shortestDistance then
-                        closestPlayer = player
-                        shortestDistance = distance
-                    end
-                end
-            end
-
-            if closestPlayer then
-                mouse.TargetFilter = closestPlayer.Character
-                mouse.Hit = CFrame.new(closestPlayer.Character.Head.Position)
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local targetPosition = player.Character.HumanoidRootPart.Position
+            local distance = (localPosition - targetPosition).Magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                closestPlayer = player
             end
         end
     end
+
+    return closestPlayer
 end
 
--- Criar a interface e iniciar o aimbot
-createInterface()
-aimbot()
+-- Aimbot loop
+game:GetService("RunService").RenderStepped:Connect(function()
+    if aimbotActive then
+        local closestPlayer = getClosestPlayer()
+        if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local targetPosition = closestPlayer.Character.HumanoidRootPart.Position
+            local localPlayer = game.Players.LocalPlayer
+            local localCharacter = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+
+            -- Fazendo a câmera seguir o jogador mais próximo
+            game.Workspace.CurrentCamera.CFrame = CFrame.new(game.Workspace.CurrentCamera.CFrame.Position, targetPosition)
+
+            -- Se você tiver uma função para atirar, pode colocá-la aqui para garantir que o tiro seja disparado automaticamente
+        end
+    end
+end)
